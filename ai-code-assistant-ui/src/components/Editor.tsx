@@ -6,6 +6,7 @@ import { javascript } from "@codemirror/lang-javascript";
 
 export default function Editor() {
   const [code, setCode] = useState("// Paste your code here");
+  const [language, setLanguage] = useState("Java");
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -21,7 +22,7 @@ export default function Editor() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, language }),
       });
 
       const data = await res.json();
@@ -30,8 +31,9 @@ export default function Editor() {
       } else {
         setError(data.error || "Something went wrong.");
       }
-    } catch (err) {
-      setError("Failed to connect to backend.");
+    } catch (error) {
+        console.error("❌ Backend error:", error);
+        setError("Failed to connect to backend.");  
     } finally {
       setLoading(false);
     }
@@ -39,10 +41,25 @@ export default function Editor() {
 
   return (
     <div className="flex-1 p-4 flex flex-col gap-4">
+      <div className="flex items-center gap-4">
+        <label htmlFor="language">Language:</label>
+        <select
+          id="language"
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+          className="border rounded px-2 py-1"
+        >
+          <option>Java</option>
+          <option>Python</option>
+          <option>JavaScript</option>
+          <option>C++</option>
+        </select>
+      </div>
+
       <CodeMirror
         value={code}
         height="300px"
-        extensions={[javascript()]}
+        extensions={[javascript()]} // Optional: You can swap by lang later
         onChange={(value) => setCode(value)}
         theme="light"
       />
