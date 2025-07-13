@@ -1,37 +1,44 @@
 "use client";
 
+import { useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
-import { useState } from "react";
 
 export default function Editor() {
   const [code, setCode] = useState("// Paste your code here");
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const sendToBackend = async () => {
     setLoading(true);
+    setResult("");
+    setError("");
+
     try {
       const res = await fetch("http://localhost:8080/api/refactor", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ code }),
       });
 
       const data = await res.json();
-      setResult(data.result);
+      if (res.ok) {
+        setResult(data.result);
+      } else {
+        setError(data.error || "Something went wrong.");
+      }
     } catch (err) {
-      console.error("Error:", err);
-      setResult("Something went wrong.");
+      setError("Failed to connect to backend.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex-1 p-6 bg-gray-50">
-      <h2 className="text-xl font-semibold mb-4 text-gray-700">Editor</h2>
-
+    <div className="flex-1 p-4 flex flex-col gap-4">
       <CodeMirror
         value={code}
         height="300px"
@@ -42,17 +49,18 @@ export default function Editor() {
 
       <button
         onClick={sendToBackend}
-        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+        disabled={loading}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50"
       >
-        {loading ? "Processing..." : "Send to AI"}
+        {loading ? "Sending to AI..." : "Send to AI"}
       </button>
 
-      {result && (
-        <div className="mt-6 p-4 bg-white border rounded shadow">
-          <h3 className="text-md font-semibold mb-2 text-gray-800">Result:</h3>
-          <pre className="text-sm text-gray-700 whitespace-pre-wrap">{result}</pre>
-        </div>
-      )}
+      <div className="bg-gray-100 p-4 rounded">
+        <h2 className="text-lg font-semibold mb-2">Result:</h2>
+        {loading && <p className="text-gray-500">Processing...</p>}
+        {error && <p className="text-red-500">{error}</p>}
+        {!loading && !error && <pre className="whitespace-pre-wrap">{result}</pre>}
+      </div>
     </div>
   );
 }

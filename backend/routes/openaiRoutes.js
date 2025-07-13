@@ -1,40 +1,50 @@
 const express = require("express");
 const router = express.Router();
 const { OpenAI } = require("openai");
+require("dotenv").config();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 router.post("/refactor", async (req, res) => {
   const { code } = req.body;
+  console.log("✅ Received:", code);
 
   if (!code) {
+    console.log("❌ No code — sent 400");
     return res.status(400).json({ error: "No code provided" });
   }
 
   try {
-    const chatResponse = await openai.chat.completions.create({
+    console.log("🔍 Before GPT Step 1");
+    const analysis = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
-        {
-          role: "system",
-          content: "You are a senior software engineer who refactors code to improve readability, performance, and structure.",
-        },
-        {
-          role: "user",
-          content: `Please refactor the following code:\n\n${code}`,
-        },
+        { role: "system", content: "You are a senior Java developer." },
+        { role: "user", content: `Analyze this code for errors:\n\n${code}` },
+      ],
+      temperature: 0.0,
+    });
+    console.log("✅ Completed GPT Step 1");
+    
+    console.log("🔍 Before GPT Step 2");
+    const refactor = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: "You are a senior Java developer." },
+        { role: "user", content: `Here are issues:\n${analysis.choices[0]?.message?.content}\nRefactor code:` },
+        { role: "user", content: `Original:\n${code}` }
       ],
       temperature: 0.3,
     });
+    console.log("✅ Completed GPT Step 2");
 
-    const result = chatResponse.choices[0]?.message?.content || "No response";
+    const result = refactor.choices[0]?.message?.content;
+    console.log("🎯 Final result:", result);
+    return res.json({ result });
 
-    res.json({ result });
-  } catch (error) {
-    console.error("OpenAI error:", error);
-    res.status(500).json({ error: "Failed to refactor code using AI" });
+  } catch (e) {
+    console.error("💥 Error during GPT calls:", e);
+    return res.status(500).json({ error: "GPT process error" });
   }
 });
 
