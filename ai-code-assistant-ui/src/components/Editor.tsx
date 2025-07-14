@@ -23,11 +23,15 @@ const languageMap: Record<string, () => Extension> = {
   typescript: javascript, // fallback
 };
 
-export default function Editor() {
-  const [code, setCode] = useState("// Paste your code here");
+export default function Editor({
+  code,
+  setCode,
+}: {
+  code: string;
+  setCode: (val: string) => void;
+}) {
   const [language, setLanguage] = useState("java");
   const [workflow, setWorkflow] = useState("refactor");
-
   const [extensions, setExtensions] = useState<Extension[]>([java()]);
   const [history, setHistory] = useState<string[]>([]);
 
@@ -44,7 +48,7 @@ export default function Editor() {
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [setCode]);
 
   const handleCodeChange = (value: string) => {
     setCode(value);
@@ -94,7 +98,7 @@ export default function Editor() {
         value={code}
         height="400px"
         extensions={extensions}
-        onChange={(value) => handleCodeChange(value)}
+        onChange={handleCodeChange}
         theme="light"
       />
       <WorkflowSelector selected={workflow} onChange={setWorkflow} />
@@ -134,4 +138,3 @@ export default function Editor() {
     </div>
   );
 }
-

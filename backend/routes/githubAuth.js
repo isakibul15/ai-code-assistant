@@ -41,4 +41,114 @@ router.get("/callback", async (req, res) => {
   }
 });
 
+// POST /api/github/commit
+router.post("/commit", async (req, res) => {
+  const { repo, path, content } = req.body;
+  const token = req.headers.authorization;
+
+  if (!repo || !path || !content || !token)
+    return res.status(400).json({ error: "Missing data" });
+
+  try {
+    const [owner, repoName] = repo.split("/");
+
+    // Get default branch
+    const branchRes = await axios.get(
+      `https://api.github.com/repos/${owner}/${repoName}`,
+      {
+        headers: { Authorization: `token ${token}` },
+      }
+    );
+
+    const baseBranch = branchRes.data.default_branch;
+
+    // Get latest commit SHA
+    const refRes = await axios.get(
+      `https://api.github.com/repos/${owner}/${repoName}/git/ref/heads/${baseBranch}`,
+      {
+        headers: { Authorization: `token ${token}` },
+      }
+    );
+
+    const latestSha = refRes.data.object.sha;
+
+    // Create new branch
+    const newBranch = "ai-commit-" + Date.now();
+    await axios.post(
+      `https://api.github.com/repos/${owner}/${repoName}/git/refs`,
+      {
+        ref: `refs/heads/${newBranch}`,
+        sha: latestSha,
+      },
+      {
+        headers: { Authorization: `token ${token}` },
+      }
+    );
+
+    // Create blob with file content
+    const blobRes = await axios.post(
+      `https://api.github.com/repos/${owner}/${repoName}/git/blobs`,
+      {
+        content: content,
+        encoding: "utf-8",
+      },
+      {
+        headers: { Authorization: `token ${token}` },
+      }
+    );
+
+    // Create a tree with the blob
+    const treeRes = await axios.post(
+      `https://api.github.com/repos/${owner}/${repoName}/git/trees`,
+      {
+        base_tree: latestSha,
+        tree: [
+          {
+            path,
+            mode: "100644",
+            type: "blob",
+            sha: blobRes.data.sha,
+          },
+        ],
+      },
+      {
+        headers: { Authorization: `token ${token}` },
+      }
+    );
+
+    // Create a commit with the tree
+    const commitRes = await axios.post(
+      `https://api.github.com/repos/${owner}/${repoName}/git/commits`,
+      {
+        message: "Add AI-generated code",
+        tree: treeRes.data.sha,
+        parents: [latestSha],
+      },
+      {
+        headers: { Authorization: `token ${token}` },
+      }
+    );
+
+    // Update the new branch with the commit
+    await axios.patch(
+      `https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/${newBranch}`,
+      {
+        sha: commitRes.data.sha,
+      },
+      {
+        headers: { Authorization: `token ${token}` },
+      }
+    );
+
+    return res.json({
+      message: "Committed successfully",
+      url: `https://github.com/${owner}/${repoName}/tree/${newBranch}`,
+    });
+  } catch (err) {
+    console.error("GitHub Commit Error:", err.message);
+    return res.status(500).json({ error: "Failed to commit" });
+  }
+});
+
+
 module.exports = router;

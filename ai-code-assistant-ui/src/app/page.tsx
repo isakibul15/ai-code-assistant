@@ -1,26 +1,26 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Editor from "../components/Editor";
 
-import { useEffect } from "react";
-
 export default function Home() {
+  const [code, setCode] = useState("// Paste your code here");
+
   useEffect(() => {
     const url = new URL(window.location.href);
     const token = url.searchParams.get("token");
     if (token) {
       localStorage.setItem("github_token", token);
       alert("✅ Logged in with GitHub");
-      // Optionally remove the token from URL
       window.history.replaceState({}, document.title, "/");
     }
   }, []);
 
-  return <div>
+  return (
     <div className="flex h-screen">
-      <Sidebar />
-      <Editor />
+      <Sidebar code={code} />
+      <Editor code={code} setCode={setCode} />
     </div>
-  </div>;
+  );
 }

@@ -2,8 +2,9 @@
 
 import GitHubLogin from "./GitHubLogin";
 import GitHubRepos from "./GitHubRepos";
+import RepoCommitForm from "./RepoCommitForm";
 
-export default function Sidebar() {
+export default function Sidebar({ code }: { code: string }) {
   const workflows = ["Refactor", "Explain", "Generate Tests"];
 
   return (
@@ -25,6 +26,7 @@ export default function Sidebar() {
           <h3 className="text-lg font-semibold mb-2">Account</h3>
           <GitHubLogin />
           <GitHubRepos />
+          <RepoCommitForm code={code} />
         </div>
       </div>
     </aside>
