@@ -5,45 +5,39 @@ require("dotenv").config();
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-router.post("/refactor", async (req, res) => {
-  const { code, language } = req.body;
-  console.log("✅ Received:", { code, language });
+router.post("/workflow", async (req, res) => {
+  const { code, type } = req.body;
 
-  if (!code || !language) {
-    return res.status(400).json({ error: "Missing code or language" });
+  if (!code || !type) {
+    return res.status(400).json({ error: "Missing code or workflow type" });
+  }
+
+  const prompts = {
+    refactor: `Refactor the following code:\n\n${code}`,
+    explain: `Explain what this code does:\n\n${code}`,
+    test: `Write unit tests for this code:\n\n${code}`,
+  };
+
+  const prompt = prompts[type.toLowerCase()];
+  if (!prompt) {
+    return res.status(400).json({ error: "Unsupported workflow type" });
   }
 
   try {
-    const systemMsg = `You are a senior ${language} developer.`;
-    const analysis = await openai.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
-        { role: "system", content: systemMsg },
-        { role: "user", content: `Analyze this ${language} code for syntax and logic errors:\n\n${code}` }
+        { role: "system", content: "You are a senior software engineer." },
+        { role: "user", content: prompt },
       ],
-      temperature: 0.0,
     });
 
-    const issues = analysis.choices[0]?.message?.content;
-
-    const refactor = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: systemMsg },
-        { role: "user", content: `Here are issues:\n${issues}\nRefactor the code accordingly:` },
-        { role: "user", content: `Original:\n\n${code}` }
-      ],
-      temperature: 0.3,
-    });
-
-    const result = refactor.choices[0]?.message?.content;
-    return res.json({ result });
-
-  } catch (error) {
-    console.error("💥 GPT error:", error);
-    return res.status(500).json({ error: "GPT processing failed." });
+    const result = completion.choices[0]?.message?.content;
+    res.json({ result });
+  } catch (err) {
+    console.error("OpenAI error:", err);
+    res.status(500).json({ error: "OpenAI API failed" });
   }
 });
-
 
 module.exports = router;

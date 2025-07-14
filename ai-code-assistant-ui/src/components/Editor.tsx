@@ -8,6 +8,7 @@ import { cpp } from "@codemirror/lang-cpp";
 import { go } from "@codemirror/lang-go";
 import { useState, useEffect } from "react";
 import LanguageSelector from "./LanguageSelector";
+import WorkflowSelector from "./WorkflowSelector";
 import { Extension } from "@codemirror/state";
 import socket from "../lib/socket";
 
@@ -25,6 +26,8 @@ const languageMap: Record<string, () => Extension> = {
 export default function Editor() {
   const [code, setCode] = useState("// Paste your code here");
   const [language, setLanguage] = useState("java");
+  const [workflow, setWorkflow] = useState("refactor");
+
   const [extensions, setExtensions] = useState<Extension[]>([java()]);
   const [history, setHistory] = useState<string[]>([]);
 
@@ -50,11 +53,12 @@ export default function Editor() {
 
   const sendToBackend = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/refactor", {
+      const res = await fetch("http://localhost:8080/api/workflow", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, type: workflow }),
       });
+
       const data = await res.json();
       alert("Result:\n" + (data.result || "No response from AI"));
     } catch (error: unknown) {
@@ -93,6 +97,7 @@ export default function Editor() {
         onChange={(value) => handleCodeChange(value)}
         theme="light"
       />
+      <WorkflowSelector selected={workflow} onChange={setWorkflow} />
 
       <div className="mt-4 flex space-x-2">
         <button
@@ -129,3 +134,4 @@ export default function Editor() {
     </div>
   );
 }
+
