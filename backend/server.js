@@ -11,7 +11,7 @@ const server = http.createServer(app);
 const corsOptions = {
   origin: "http://localhost:3000",
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 };
 
@@ -27,6 +27,11 @@ app.use("/auth/github", githubAuth);
 const githubRepos = require("./routes/githubRepos");
 app.use("/api/github", githubRepos);
 
+const githubCommit = require("./routes/githubCommit");
+app.use("/api/github/commit", githubCommit);
+
+const githubRoutes = require("./routes/githubRoutes");
+app.use("/api/github", githubRoutes);
 
 // Start WebSocket
 initSocket(server);
