@@ -2,26 +2,67 @@
 
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
-import { useState } from "react";
+import { python } from "@codemirror/lang-python";
+import { java } from "@codemirror/lang-java";
+import { cpp } from "@codemirror/lang-cpp";
+import { go } from "@codemirror/lang-go";
+import { useState, useEffect } from "react";
 import LanguageSelector from "./LanguageSelector";
+import { Extension } from "@codemirror/state";
+import socket from "../lib/socket";
+
+const languageMap: Record<string, () => Extension> = {
+  javascript,
+  python,
+  java,
+  cpp,
+  go,
+  typescript: javascript, // fallback
+};
 
 export default function Editor() {
   const [code, setCode] = useState("// Paste your code here");
-  const [result, setResult] = useState("");
   const [language, setLanguage] = useState("java");
+  const [extensions, setExtensions] = useState<Extension[]>([java()]);
+
+  useEffect(() => {
+    const selected = languageMap[language];
+    if (selected) setExtensions([selected()]);
+  }, [language]);
+
+  useEffect(() => {
+    socket.connect();
+
+    socket.on("code:update", (newCode: string) => {
+      setCode(newCode);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const handleCodeChange = (value: string) => {
+    setCode(value);
+    socket.emit("code:update", value);
+  };
 
   const sendToBackend = async () => {
     try {
       const res = await fetch("http://localhost:8080/api/refactor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, language }),
+        body: JSON.stringify({ code }),
       });
+
       const data = await res.json();
-      setResult(data.result || "Something went wrong.");
-    } catch (err) {
-      setResult("❌ Failed to connect to backend.");
-      console.error(err);
+      alert("Result:\n" + (data.result || "No response from AI"));
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        alert("Error sending to AI: " + error.message);
+      } else {
+        alert("Unknown error occurred.");
+      }
     }
   };
 
@@ -31,20 +72,16 @@ export default function Editor() {
       <CodeMirror
         value={code}
         height="400px"
-        extensions={[javascript()]} // (Optional: Change dynamically based on language)
-        onChange={(value) => setCode(value)}
+        extensions={extensions}
+        onChange={(value) => handleCodeChange(value)}
         theme="light"
       />
       <button
         onClick={sendToBackend}
-        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
       >
         Send to AI
       </button>
-      <div className="mt-4">
-        <h3 className="font-semibold">Result:</h3>
-        <pre className="bg-gray-100 p-2 rounded">{result}</pre>
-      </div>
     </div>
   );
 }

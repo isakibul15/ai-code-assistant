@@ -1,21 +1,28 @@
 const express = require("express");
+const http = require("http");
 const cors = require("cors");
+require("dotenv").config();
+
+const { initSocket } = require("./socketServer");
 
 const app = express();
+const server = http.createServer(app);
 
-// ✅ 1. CORS middleware must come first
-app.use(cors());
+const corsOptions = {
+  origin: "http://localhost:3000",
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"],
+  credentials: true,
+};
 
-// ✅ 2. Then JSON body parser
+app.use(cors(corsOptions));
 app.use(express.json());
 
-// ✅ 3. Define your endpoint
-app.post("/api/refactor", (req, res) => {
-  const { code } = req.body;
-  console.log("Received:", code);
-  if (!code) return res.status(400).json({ error: "No code" });
-  res.json({ result: `Refactored version:\n\n${code}` });
-});
+const openaiRoutes = require("./routes/openaiRoutes");
+app.use("/api", openaiRoutes);
 
-// ✅ 4. Start server
-app.listen(8080, () => console.log("Server running on http://localhost:8080"));
+// Start WebSocket
+initSocket(server);
+
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

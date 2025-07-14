@@ -15,7 +15,8 @@
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "openai": "^5.9.0",
-    "path-to-regexp": "^6.2.1"
+    "path-to-regexp": "^6.2.1",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
