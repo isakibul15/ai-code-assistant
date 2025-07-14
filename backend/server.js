@@ -21,6 +21,13 @@ app.use(express.json());
 const openaiRoutes = require("./routes/openaiRoutes");
 app.use("/api", openaiRoutes);
 
+const githubAuth = require("./routes/githubAuth");
+app.use("/auth/github", githubAuth);
+
+const githubRepos = require("./routes/githubRepos");
+app.use("/api/github", githubRepos);
+
+
 // Start WebSocket
 initSocket(server);
 
