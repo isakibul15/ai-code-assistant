@@ -33,6 +33,10 @@ app.use("/api/github/commit", githubCommit);
 const githubRoutes = require("./routes/githubRoutes");
 app.use("/api/github", githubRoutes);
 
+
+// Keep this if it makes sense
+console.log("This is the final version after resolving.");
+
 // Start WebSocket
 initSocket(server);
 
