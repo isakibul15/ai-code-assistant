@@ -1,93 +1,71 @@
-// components/RepoCommitForm.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-type Repo = {
-  name: string;
-  full_name: string;
-  default_branch: string;
-  owner: { login: string };
+type Props = {
+  code: string;
 };
 
-export default function RepoCommitForm({ code }: { code: string }) {
-  const [repos, setRepos] = useState<Repo[]>([]);
-  const [selectedRepo, setSelectedRepo] = useState("");
-  const [filePath, setFilePath] = useState("ai-code-output.txt");
+export default function RepoCommitForm({ code }: Props) {
+  const [repo, setRepo] = useState("");
+  const [branch, setBranch] = useState("main");
+  const [message, setMessage] = useState("AI updated code");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const submitPR = async () => {
     const token = localStorage.getItem("github_token");
-    if (!token) return;
-
-    fetch("http://localhost:8080/api/github/repos", {
-      headers: { Authorization: token },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setRepos(data.repos || []);
-      });
-  }, []);
-
-  const handleCommit = async () => {
-    const token = localStorage.getItem("github_token");
-    if (!token || !selectedRepo) return alert("Missing token or repo");
+    if (!token) return alert("🔒 Please login with GitHub first.");
 
     setLoading(true);
-    const res = await fetch("http://localhost:8080/api/github/commit", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token,
-      },
-      body: JSON.stringify({
-        repo: selectedRepo,
-        path: filePath,
-        content: code,
-      }),
-    });
+    try {
+      const res = await fetch("http://localhost:8080/api/github/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, token, repo, branch, message }),
+      });
 
-    const result = await res.json();
-    setLoading(false);
-
-    if (result.url) {
-      alert("✅ Committed! " + result.url);
-    } else {
-      alert("❌ Commit failed.");
+      const data = await res.json();
+      if (data.prUrl) {
+        alert("✅ PR Created!\n" + data.prUrl);
+        window.open(data.prUrl, "_blank");
+      } else {
+        alert("❌ Failed to create PR");
+      }
+    } catch (err) {
+      console.error("PR error", err);
+      alert("Something went wrong.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="mt-6">
-      <h3 className="font-semibold text-lg mb-2">📤 Commit AI Output to GitHub</h3>
-
-      <select
-        value={selectedRepo}
-        onChange={(e) => setSelectedRepo(e.target.value)}
-        className="border px-3 py-2 rounded w-full mb-2"
-      >
-        <option value="">Select a repository</option>
-        {repos.map((repo) => (
-          <option key={repo.full_name} value={repo.full_name}>
-            {repo.full_name}
-          </option>
-        ))}
-      </select>
-
+      <h4 className="text-md font-semibold mb-1">📤 Commit to GitHub</h4>
       <input
-        type="text"
-        value={filePath}
-        onChange={(e) => setFilePath(e.target.value)}
-        placeholder="Path to save file (e.g. src/AIHelper.js)"
-        className="border px-3 py-2 rounded w-full mb-2"
+        value={repo}
+        onChange={(e) => setRepo(e.target.value)}
+        placeholder="username/repo"
+        className="w-full mb-2 border px-2 py-1 rounded text-sm"
       />
-
+      <input
+        value={branch}
+        onChange={(e) => setBranch(e.target.value)}
+        placeholder="branch (default: main)"
+        className="w-full mb-2 border px-2 py-1 rounded text-sm"
+      />
+      <input
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Commit message"
+        className="w-full mb-2 border px-2 py-1 rounded text-sm"
+      />
       <button
-        onClick={handleCommit}
-        className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+        onClick={submitPR}
+        className="w-full bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
         disabled={loading}
       >
-        {loading ? "Committing..." : "Commit to GitHub"}
+        {loading ? "Creating PR..." : "Create Pull Request"}
       </button>
     </div>
   );

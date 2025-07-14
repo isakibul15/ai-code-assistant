@@ -4,7 +4,11 @@ import GitHubLogin from "./GitHubLogin";
 import GitHubRepos from "./GitHubRepos";
 import RepoCommitForm from "./RepoCommitForm";
 
-export default function Sidebar({ code }: { code: string }) {
+type SidebarProps = {
+  code: string;
+};
+
+export default function Sidebar({ code }: SidebarProps) {
   const workflows = ["Refactor", "Explain", "Generate Tests"];
 
   return (
@@ -21,9 +25,8 @@ export default function Sidebar({ code }: { code: string }) {
           ))}
         </ul>
 
-        {/* GitHub Auth & Repos */}
         <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2">Account</h3>
+          <h3 className="text-lg font-semibold mb-2">GitHub</h3>
           <GitHubLogin />
           <GitHubRepos />
           <RepoCommitForm code={code} />
