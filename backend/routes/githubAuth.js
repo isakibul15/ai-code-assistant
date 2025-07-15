@@ -1,7 +1,7 @@
 const express = require("express");
 const axios = require("axios");
-require("dotenv").config();
 const router = express.Router();
+require("dotenv").config();
 
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
@@ -33,21 +33,37 @@ router.get("/callback", async (req, res) => {
     const accessToken = tokenRes.data.access_token;
     if (!accessToken) return res.status(401).send("Failed to get token");
 
-    // Store token temporarily (or use cookie/session)
-    res.redirect(`http://localhost:3000?token=${accessToken}`);
+    // ✅ Store token securely in HttpOnly cookie
+    res.cookie("github_token", accessToken, {
+      httpOnly: true,
+      secure: false, // Set to true if using HTTPS in production
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    });
+
+    res.redirect("http://localhost:3000"); // No token in URL
   } catch (err) {
     console.error("GitHub OAuth error", err);
     res.status(500).send("OAuth failed");
   }
 });
 
+// GET /auth/github/me - Check if logged in
+router.get("/me", (req, res) => {
+  const token = req.cookies.github_token;
+  if (!token) return res.status(401).json({ error: "Not logged in" });
+
+  res.json({ token });
+});
+
 // POST /api/github/commit
 router.post("/commit", async (req, res) => {
+  const token = req.cookies.github_token;
   const { repo, path, content } = req.body;
-  const token = req.headers.authorization;
 
-  if (!repo || !path || !content || !token)
+  if (!repo || !path || !content || !token) {
     return res.status(400).json({ error: "Missing data" });
+  }
 
   try {
     const [owner, repoName] = repo.split("/");
@@ -73,7 +89,7 @@ router.post("/commit", async (req, res) => {
     const latestSha = refRes.data.object.sha;
 
     // Create new branch
-    const newBranch = "ai-commit-" + Date.now();
+    const newBranch = `ai-commit-${Date.now()}`;
     await axios.post(
       `https://api.github.com/repos/${owner}/${repoName}/git/refs`,
       {
@@ -85,7 +101,7 @@ router.post("/commit", async (req, res) => {
       }
     );
 
-    // Create blob with file content
+    // Create blob
     const blobRes = await axios.post(
       `https://api.github.com/repos/${owner}/${repoName}/git/blobs`,
       {
@@ -97,7 +113,7 @@ router.post("/commit", async (req, res) => {
       }
     );
 
-    // Create a tree with the blob
+    // Create tree
     const treeRes = await axios.post(
       `https://api.github.com/repos/${owner}/${repoName}/git/trees`,
       {
@@ -116,7 +132,7 @@ router.post("/commit", async (req, res) => {
       }
     );
 
-    // Create a commit with the tree
+    // Create commit
     const commitRes = await axios.post(
       `https://api.github.com/repos/${owner}/${repoName}/git/commits`,
       {
@@ -129,7 +145,7 @@ router.post("/commit", async (req, res) => {
       }
     );
 
-    // Update the new branch with the commit
+    // Update branch
     await axios.patch(
       `https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/${newBranch}`,
       {
@@ -140,15 +156,28 @@ router.post("/commit", async (req, res) => {
       }
     );
 
+    // Create Pull Request
+    const prRes = await axios.post(
+      `https://api.github.com/repos/${owner}/${repoName}/pulls`,
+      {
+        title: "🤖 AI-generated code update",
+        head: newBranch,
+        base: baseBranch,
+        body: "This PR was automatically created by your AI assistant.",
+      },
+      {
+        headers: { Authorization: `token ${token}` },
+      }
+    );
+
     return res.json({
-      message: "Committed successfully",
-      url: `https://github.com/${owner}/${repoName}/tree/${newBranch}`,
+      message: "✅ Pull Request Created!",
+      prUrl: prRes.data.html_url,
     });
   } catch (err) {
     console.error("GitHub Commit Error:", err.message);
-    return res.status(500).json({ error: "Failed to commit" });
+    return res.status(500).json({ error: "Failed to commit or create PR" });
   }
 });
-
 
 module.exports = router;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+// Better typed Repo
 type Repo = {
   name: string;
   html_url: string;
@@ -16,17 +17,21 @@ export default function GitHubRepos() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("github_token");
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    fetch("http://localhost:8080/api/github/repos", {
-      headers: {
-        Authorization: token,
-      },
+    // Fetch token from backend cookie API
+    fetch("http://localhost:8080/auth/github/me", {
+      credentials: "include",
     })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.token) throw new Error("No token found");
+
+        return fetch("http://localhost:8080/api/github/repos", {
+          headers: {
+            Authorization: data.token,
+          },
+          credentials: "include",
+        });
+      })
       .then((res) => res.json())
       .then((data) => {
         setRepos(data.repos || []);
