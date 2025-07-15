@@ -12,6 +12,7 @@ import WorkflowSelector from "./WorkflowSelector";
 import { Extension } from "@codemirror/state";
 import socket from "../lib/socket";
 
+
 const LOCAL_HISTORY_KEY = "ai-code-history";
 
 const languageMap: Record<string, () => Extension> = {
@@ -55,8 +56,11 @@ export default function Editor({
     socket.emit("code:update", value);
   };
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const sendToBackend = async () => {
     try {
+      setIsLoading(true);
       const res = await fetch("http://localhost:8080/api/workflow", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -65,14 +69,15 @@ export default function Editor({
 
       const data = await res.json();
       alert("Result:\n" + (data.result || "No response from AI"));
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        alert("Error sending to AI: " + error.message);
-      } else {
-        alert("Unknown error occurred.");
-      }
+    } catch (error) {
+      console.error("Error sending to AI:", error);
+      alert("Error sending to AI");
+    } finally {
+      setIsLoading(false);
     }
   };
+
+
 
   const saveSnapshot = () => {
     const updatedHistory = [code, ...history];
@@ -106,9 +111,10 @@ export default function Editor({
       <div className="mt-4 flex space-x-2">
         <button
           onClick={sendToBackend}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          disabled={isLoading}
+          className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
         >
-          Send to AI
+          {isLoading ? "Processing..." : "Send to AI"}
         </button>
         <button
           onClick={saveSnapshot}
