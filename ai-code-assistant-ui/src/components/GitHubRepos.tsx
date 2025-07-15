@@ -58,10 +58,10 @@ export default function GitHubRepos() {
                 href={repo.html_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 text-sm hover:underline"
+                className="text-blue-600 text-sm hover:underline font-medium"
               >
-                {repo.owner.login}/{repo.name}{" "}
-                <span className="text-gray-400">({repo.default_branch})</span>
+                {repo.owner.login}/{repo.name}
+                <span className="text-gray-400"> ({repo.default_branch})</span>
               </a>
             </li>
           ))}
